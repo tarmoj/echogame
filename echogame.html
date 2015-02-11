@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type">
+    <title>Echo game</title>
+    <meta content="Tarmo Johannes" id="author">
+	
+	<link type="text/css" rel="stylesheet" href="soundgames.css">
+	
+	<script src="kinetic-v5.1.0.js"></script> <!-- image movement etc-->
+    <script src="ws-functions.js"></script> <!-- websocket functions -->
+    
+    <script defer="defer">
+    
+    var distance = 0;
+    var degree = 0.5; // 1 is the full circle or distance between speakers (converted to 360/90/x degrees in Cosund)
+		//var serverURL = "ws://172.16.10.186:6006/ws";
+	function drawEverything() {
+		var stage = new Kinetic.Stage({
+				 container: "container",
+				 width: 400,
+				 height: 200
+			   });
+
+		 var layer = new Kinetic.Layer();
+		 stage.add(layer);
+		 var stageRect =  new Kinetic.Rect({
+			x:25, y:25, 
+			width: stage.getWidth()-50,
+			height: stage.getHeight()-50,
+			fill: "green",
+
+			stroke: "darkgreen"
+		 });
+		 layer.add(stageRect);
+		 
+		 var pointer = new Kinetic.Circle({
+				radius: 20,
+				draggable: true, 
+				x: stageRect.x()+stageRect.getWidth()/2, 
+				y: stageRect.y()+stageRect.getHeight()/2,
+				fill: 'yellow',
+				stroke: 'red',
+				opacity: 0.5,
+				strokeWidth: 1, 
+				dragBoundFunc: function(pos) {
+					var newX=pos.x, newY= pos.y;
+					if (pos.y<stageRect.y()) newY = stageRect.y();
+					if (pos.y>stageRect.y()+stageRect.getHeight()) newY = stageRect.y()+stageRect.getHeight();
+					if (pos.x<stageRect.x()) newX = stageRect.x();
+					if (pos.x>stageRect.x()+stageRect.getWidth()) newX = stageRect.x()+stageRect.getWidth();
+					
+					return { x: newX, y: newY };
+				}
+			});	
+		pointer.on("dragend",function() {
+			degree = (pointer.x()-stageRect.x()) / stageRect.getWidth();
+			distance = 1 - (pointer.y()-stageRect.y()) / stageRect.getHeight()   ;
+			console.log("New pan(degree), distance: ",degree, distance);
+		});	 
+		layer.add(pointer);
+		layer.draw();
+
+     } 
+    
+
+	function onMessage(evt)
+	{
+		// does server send any messages at all?
+		writeToScreen("Message from server: " + evt.data + '\n');
+ 		var mess_array = evt.data.split(" ");
+ 		//console.log(mess_array[0]);
+ 		if (mess_array[0] == "pause") {	
+			sendButton.disabled = true;
+			document.getElementById("messageText").innerHTML = "Wait and listen!"
+ 		}
+ 		if (mess_array[0] == "continue") {	
+			sendButton.disabled = false;
+			document.getElementById("messageText").innerHTML = "";
+ 		}
+ 		
+ 		if (mess_array[0] == "range") { // comes in as range low disable/enable - NB! user can break it when does reload	
+			var radioButton=document.getElementById(mess_array[1]);
+			if (mess_array[2]=="enable") {
+				radioButton.disabled = false;
+			}	
+			if (mess_array[2]=="disable") {
+				radioButton.disabled = true;
+				if (radioButton.checked)
+					radioButton.checked = false;
+			}
+			
+			document.getElementById("messageText").innerHTML +=  "Range " +mess_array[1] + " " +mess_array[2]+"d.";;
+ 		}
+ 		
+	}
+
+	
+  
+  // UI functions --------------------------------------------------------
+		
+	function getRadioValue(name) {
+		var elements = document.getElementsByName(name);
+		var radioValue;
+		for (var i=0;  i<elements.length; i++) {
+			if (elements[i].checked) {
+				radioValue = elements[i].value;
+			}
+		}
+		return radioValue;
+	}
+	
+	function tester() {
+		var voice = ["low","medium","high"];
+		var length=["short","medium", "long"];
+		
+		var voiceIndex = Math.floor(Math.random()*3);
+		var lengthIndex = Math.floor(Math.random()*3);
+		
+		var degree = Math.random();
+		var distance = Math.random();
+		doSend("play flute " + degree.toString() +  " " + distance.toString()  + " "  + voice[voiceIndex] + " " + length[lengthIndex]  );
+
+		setTimeout(function(){ tester()},500+Math.random()*3000);
+
+		
+	}
+	
+	window.onload = function(){
+		
+		var sendButton = document.getElementById("sendButton");
+		var connectButton = document.getElementById("connectButton");
+		//var disconnectButton = document.getElementById("connectButton");
+		//var degree = document.getElementById("degree");
+		//var distnace = document.getElementById("distance");
+		//var instrument = document.getElementById("instrument");
+		
+		doConnect(); // init websocket on start; suppose the server is ready
+		
+		drawEverything();
+		
+		sendButton.onclick = function() {
+
+			doSend("play flute " + degree.toString() +  " " + distance.toString()  + " "  + getRadioValue("range") + " " + getRadioValue("type")  );
+			//var points = cursorImage.getPosition();
+			sendButton.disabled = true; // don't let to play again for some time
+			setTimeout(function(){ sendButton.disabled = false;},5000);
+		}
+		
+		connectButton.onclick = function() { 
+			doConnect();
+		}
+		
+	};
+		
+	</script>
+  </head>
+  <body><h1>ECHO GAME. <i>TEST</i></h1><br>
+    <br>
+    <form name="myform">
+
+    <br>
+
+    <!--canvas test ecample from http://www.html5canvastutorials.com/kineticjs/html5-canvas-drag-and-drop-an-image-tutorial/ -->
+     
+    Range:&nbsp;<input id="low" value="low" name="range" type="radio">low&nbsp;&nbsp; <input
+      checked="checked" value="medium" name="range" type="radio" id="medium">medium&nbsp;&nbsp;
+    <input value="high" name="range" type="radio" id="high">high <br>
+    <br>
+    Length of sound: <input value="short" name="type" type="radio">short&nbsp;&nbsp;
+    <input checked="checked" name="type" value="medium" type="radio">medium&nbsp;
+    &nbsp; <input value="long" name="type" type="radio">long<br>
+    <br>
+
+	<button type="button" class="button" id="sendButton">Play</button><span id="messageText">	</span><br>
+   <div id="container"></div>
+    
+   
+    
+    Server address: <input value="ws://localhost:11011/ws" id="url" type="text"><br>
+    <button type="button" id="connectButton" onclick="doConnect();">Connect</button>
+    <!--<button type="button" id="disconnectButton">Disonnect</button>-->
+    <br>
+    <br>
+    <p><textarea id="outputtext" rows="5" cols="30" readonly></textarea> </p>
+    
+    
+    </form>
+   
+   
+   
+   
+  </body>
+</html>
