@@ -32,7 +32,7 @@ chn_k "repeatcount",1
 chnset 1, "bgLevel"
 
 ; CONSTANTS:
-gkLevel init 1
+gkBgLevel init 1
 gkVolume init 0.6
 
 maxalloc "play", 20 ; was 15 raise!
@@ -40,24 +40,24 @@ maxalloc "play", 20 ; was 15 raise!
 alwayson "getLevel"
 instr getLevel
 	k1 chnget "bgLevel"
-	gkLevel port k1, 0.02
+	gkBgLevel port k1, 0.02
 	gkVolume port (chnget:k("volume")),0.02
-	;printk2 gkLevel	
+	;printk2 gkBgLevel	
 endin
 
-scoreline_i  {{ i "play" 0 0.5 "sounds/low/short/sound01.wav" 1 1 0 }}
+scoreline_i  {{ i "play" 0 0.5 "sounds/medium/short/sound13.wav" 0.5 1 0 }}
 instr play
 	Sfile strget p4;= "sounds/low/long/sound01.wav";strget p4
 	
 	;instrument = p4  ; before soundin.number were used
 	idegree =  (nchnls==2) ? p5*90 : p5*360 ; comes in as 0..1; cpmvert to stereo - 0..90 or circular  0..360. Front-Left is 0 degrees.
 	kdegree init idegree
-	idistance = p6*5 ; comes in as 0..1>=1 kaugemal
+	idistance = 0.1+p6*5 ; comes in as 0..1>=1 kaugemal
 	kdistanceChange init 0
 	ivisit = p7 ; first visti - 0, second visit 1 etc
 	ireverbtime = 1.5
 	ihdif = 0.2 ; the higher, the faster high frequencies decay
-	idry = 1
+	idry = 1 - p6*0.25 ; depending also in distance
 	ireturntime chnget "returntime"
 	irepeatcount chnget "repeatcount"
 	print ireturntime, irepeatcount
@@ -72,25 +72,30 @@ instr play
 	if (ivisit>0 ) then ; second round, not played by performer but invoked as echoe
 		kmovement lfo 10,0.4*ivisit,1 ;jitter 90,0.1,1 ; move the angle
 		kdegree = idegree +kmovement		
-		idistance += 5 + ivisit ; was 0.5*ivisit
+		idistance += 2 * ivisit ; was 0.5*ivisit
 		ihdif = 0.2+ivisit/10*0.8
-		idry = 1 - ivisit/10
+		idry -=  ivisit/10
 		kdistanceChange lfo 0.5, 0.25*ivisit,0 ; oli ivist/2
 		ireverbtime = 4+ivisit*1.5
 		
 		
 	endif
 	
-	ireverbsend = 0.001+ 0.01*idistance
+	ireverbsend = 0.005+ 0.01*idistance
 	p3=filelen(Sfile)+ireverbtime+0.5 ; give time for reverb ?WHY
 	
 	print idegree, idistance, ivisit
 
-	asound soundin Sfile ;instrument
-	asig = asound*linen:a(1,0.02,filelen(Sfile), 0.2) ; add envelope to soundfile playback
-	adeclick linen 5,0.05,p3,0.5 ; main envelope
+	adry soundin Sfile ;instrument
+	adry = adry*linen:a(1,0.02,filelen(Sfile), 0.2) ; add envelope to soundfile playback
+	awet reverb2 adry, 0.2, 0; first small reverb to mimic the room more
+	
+	asig = adry*idry + awet*(1-idry)
+	
+	adeclick linen 1.5,0.05,p3,0.5 ; main envelope ; compensate soft sound files
+	
 	if ivisit >0 then
-		asig reverb2 asig*0.2*idry*gkLevel,  ireverbtime, ihdif ; TODO: more intereesting reverb with k-parameters, make it depend on some global Kchange
+		asig reverb2 asig*0.2*idry*gkBgLevel,  ireverbtime, ihdif ; TODO: more intereesting reverb with k-parameters, make it depend on some global Kchange
 		kfreq line 0.2, p3, 0.5+ivisit/20
 		;adel oscil  5+ivisit, kfreq, -1
 		;adel += 20
@@ -103,11 +108,11 @@ instr play
 		;printk2 kdegree
 		a1, a2  locsig asig*adeclick*gkVolume, kdegree, idistance, ireverbsend
 		ar1, ar2 locsend
-		if (ivisit>0) then ; send only repetitions to reverb
+		;if (ivisit>0) then ; send only repetitions to reverb
 			ga1 = ga1 + ar1
-			ga2 = ga2+ar2 
-		endif
-		outs  a1*idry, a2*idry ; make better mix!		
+			ga2 = (ga2+ar2) 
+		;endif
+		outs  clip(a1*idry,0,0.8), clip(a2*idry,0,0.8) ; make better mix!		
 	elseif nchnls==4 then
 		a1, a2, a3, a4   locsig asig*adeclick*gkVolume, kdegree, idistance+kdistanceChange, ireverbsend
 		ar1, ar2, ar3, ar4 locsend
@@ -128,7 +133,7 @@ endin
 
 
 alwayson "reverb_"
-giReverbTime init 1.5
+giReverbTime init 1;1.5
 instr reverb_
 	ihdif = 0.5
 	aL reverb2 ga1, giReverbTime, ihdif
@@ -158,8 +163,8 @@ endin
  <objectName/>
  <x>0</x>
  <y>0</y>
- <width>99</width>
- <height>219</height>
+ <width>301</width>
+ <height>220</height>
  <visible>true</visible>
  <uuid/>
  <bgcolor mode="nobackground">
@@ -167,7 +172,7 @@ endin
   <g>255</g>
   <b>255</b>
  </bgcolor>
- <bsbObject type="BSBHSlider" version="2">
+ <bsbObject version="2" type="BSBHSlider">
   <objectName>bgLevel</objectName>
   <x>90</x>
   <y>79</y>
@@ -185,7 +190,7 @@ endin
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject type="BSBHSlider" version="2">
+ <bsbObject version="2" type="BSBHSlider">
   <objectName>volume</objectName>
   <x>91</x>
   <y>30</y>
@@ -197,13 +202,13 @@ endin
   <midicc>0</midicc>
   <minimum>0.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>1.00000000</value>
+  <value>0.71000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject type="BSBLabel" version="2">
+ <bsbObject version="2" type="BSBLabel">
   <objectName/>
   <x>1</x>
   <y>35</y>
@@ -232,7 +237,7 @@ endin
   <borderradius>1</borderradius>
   <borderwidth>1</borderwidth>
  </bsbObject>
- <bsbObject type="BSBLabel" version="2">
+ <bsbObject version="2" type="BSBLabel">
   <objectName/>
   <x>4</x>
   <y>76</y>
@@ -262,7 +267,7 @@ endin
   <borderradius>1</borderradius>
   <borderwidth>1</borderwidth>
  </bsbObject>
- <bsbObject type="BSBLabel" version="2">
+ <bsbObject version="2" type="BSBLabel">
   <objectName/>
   <x>10</x>
   <y>138</y>
@@ -291,7 +296,7 @@ endin
   <borderradius>1</borderradius>
   <borderwidth>1</borderwidth>
  </bsbObject>
- <bsbObject type="BSBHSlider" version="2">
+ <bsbObject version="2" type="BSBHSlider">
   <objectName>returntime</objectName>
   <x>106</x>
   <y>137</y>
@@ -309,7 +314,7 @@ endin
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject type="BSBLabel" version="2">
+ <bsbObject version="2" type="BSBLabel">
   <objectName/>
   <x>13</x>
   <y>195</y>
@@ -338,7 +343,7 @@ endin
   <borderradius>1</borderradius>
   <borderwidth>1</borderwidth>
  </bsbObject>
- <bsbObject type="BSBSpinBox" version="2">
+ <bsbObject version="2" type="BSBSpinBox">
   <objectName>repeatcount</objectName>
   <x>112</x>
   <y>193</y>
@@ -365,9 +370,9 @@ endin
   <minimum>0</minimum>
   <maximum>10</maximum>
   <randomizable group="0">false</randomizable>
-  <value>8</value>
+  <value>0</value>
  </bsbObject>
- <bsbObject type="BSBDisplay" version="2">
+ <bsbObject version="2" type="BSBDisplay">
   <objectName>returntime</objectName>
   <x>221</x>
   <y>141</y>

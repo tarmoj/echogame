@@ -15,6 +15,8 @@
     var distance = 0;
     var degree = 0.5; // 1 is the full circle or distance between speakers (converted to 360/90/x degrees in Cosund)
 		//var serverURL = "ws://172.16.10.186:6006/ws";
+	var paused = false;
+	
 	function drawEverything() {
 		var stage = new Kinetic.Stage({
 				 container: "container",
@@ -25,23 +27,40 @@
 		 var layer = new Kinetic.Layer();
 		 stage.add(layer);
 		 var stageRect =  new Kinetic.Rect({
-			x:25, y:25, 
-			width: stage.getWidth()-50,
-			height: stage.getHeight()-50,
-			fill: "green",
+			x:30, y:30, 
+			width: stage.getWidth()-60,
+			height: stage.getHeight()-60,
+			//fill: "green",
+ 			fillLinearGradientStartPointX:200,
+ 			fillLinearGradientStartPointY: 170,
+ 			fillLinearGradientEndPointX: 200,
+ 			fillLinearGradientEndPointY: 30,
+ 			fillLinearGradientColorStops: [0, 'lightblue', 0.7, 'darkblue', 1, 'black'],
 
 			stroke: "darkgreen"
 		 });
 		 layer.add(stageRect);
 		 
+// 		 var imageObj = new Image();
+// 		 imageObj.src = "speaker1.png";
+// 		 var speaker1 = new Kinetic.Image({
+//           image:imageObj,
+//           x: 60,
+//           y: 100,
+//           width: 64,
+//           height: 64
+//         });
+
+//        layer.add(speaker1);
+		 
 		 var pointer = new Kinetic.Circle({
-				radius: 20,
+				radius: 30,
 				draggable: true, 
 				x: stageRect.x()+stageRect.getWidth()/2, 
 				y: stageRect.y()+stageRect.getHeight()/2,
 				fill: 'yellow',
 				stroke: 'red',
-				opacity: 0.5,
+				opacity: 0.8,
 				strokeWidth: 1, 
 				dragBoundFunc: function(pos) {
 					var newX=pos.x, newY= pos.y;
@@ -59,6 +78,27 @@
 			console.log("New pan(degree), distance: ",degree, distance);
 		});	 
 		layer.add(pointer);
+		
+		stageRect.on('click', function() {
+			var pos = stage.getPointerPosition();
+			pointer.position(pos); 
+			degree = (pointer.x()-stageRect.x()) / stageRect.getWidth();
+			distance = 1 - (pointer.y()-stageRect.y()) / stageRect.getHeight()   ;
+			console.log("New pan(degree), distance: ",degree, distance);
+			layer.draw();			
+			
+		});
+		
+		stageRect.on('touchstart', function() {
+			var pos = stage.getPointerPosition();
+			pointer.position(pos); 
+			degree = (pointer.x()-stageRect.x()) / stageRect.getWidth();
+			distance = 1 - (pointer.y()-stageRect.y()) / stageRect.getHeight()   ;
+			console.log("New pan(degree), distance: ",degree, distance);
+			layer.draw();			
+			
+		});
+		
 		layer.draw();
 
      } 
@@ -72,9 +112,11 @@
  		//console.log(mess_array[0]);
  		if (mess_array[0] == "pause") {	
 			sendButton.disabled = true;
+			paused=true;
 			document.getElementById("messageText").innerHTML = "Wait and listen!"
  		}
  		if (mess_array[0] == "continue") {	
+			paused=false;
 			sendButton.disabled = false;
 			document.getElementById("messageText").innerHTML = "";
  		}
@@ -90,7 +132,7 @@
 					radioButton.checked = false;
 			}
 			
-			document.getElementById("messageText").innerHTML +=  "Range " +mess_array[1] + " " +mess_array[2]+"d.";;
+			document.getElementById("messageText").innerHTML =  "Range " +mess_array[1] + " " +mess_array[2]+"d.";;
  		}
  		
 	}
@@ -101,7 +143,7 @@
 		
 	function getRadioValue(name) {
 		var elements = document.getElementsByName(name);
-		var radioValue;
+		var radioValue = -1; // signals that none of the buttons was selected
 		for (var i=0;  i<elements.length; i++) {
 			if (elements[i].checked) {
 				radioValue = elements[i].value;
@@ -141,10 +183,17 @@
 		
 		sendButton.onclick = function() {
 
-			doSend("play flute " + degree.toString() +  " " + distance.toString()  + " "  + getRadioValue("range") + " " + getRadioValue("type")  );
+			if (getRadioValue("range")==-1) // if none of the voices is selecte. Can happen when server disables a voice
+				document.getElementById("messageText").innerHTML = "No range selected! Cannot play";
+			else {
+				doSend("play flute " + degree.toString() +  " " + distance.toString()  + " "  + getRadioValue("range") + " " + getRadioValue("type")  );
 			//var points = cursorImage.getPosition();
-			sendButton.disabled = true; // don't let to play again for some time
-			setTimeout(function(){ sendButton.disabled = false;},5000);
+				sendButton.disabled = true; // don't let to play again for some time
+				setTimeout(function(){ 
+					if (!paused) // if "pause" was receiverd during the waiting time, don't enable it!
+						sendButton.disabled = false;
+				},5000);
+			}
 		}
 		
 		connectButton.onclick = function() { 
@@ -156,12 +205,11 @@
 	</script>
   </head>
   <body><h1>ECHO GAME. <i>TEST</i></h1><br>
-    <br>
+    <i>Move the yellow circle where you want to hear the sound: closer or further away, left or right.</i><br>
     <form name="myform">
 
     <br>
 
-    <!--canvas test ecample from http://www.html5canvastutorials.com/kineticjs/html5-canvas-drag-and-drop-an-image-tutorial/ -->
      
     Range:&nbsp;<input id="low" value="low" name="range" type="radio">low&nbsp;&nbsp; <input
       checked="checked" value="medium" name="range" type="radio" id="medium">medium&nbsp;&nbsp;
@@ -171,13 +219,13 @@
     <input checked="checked" name="type" value="medium" type="radio">medium&nbsp;
     &nbsp; <input value="long" name="type" type="radio">long<br>
     <br>
-
-	<button type="button" class="button" id="sendButton">Play</button><span id="messageText">	</span><br>
+	Notifications: <span id="messageText" style bgcolor="red">	</span><br><br>
+	<button type="button" class="button" id="sendButton" style="width:100px; height:60px;margin-left:150px">Play</button>
    <div id="container"></div>
     
    
     
-    Server address: <input value="ws://localhost:11011/ws" id="url" type="text"><br>
+    Server address: <input value="ws://192.168.0.141:11011/ws" id="url" type="text"><br>
     <button type="button" id="connectButton" onclick="doConnect();">Connect</button>
     <!--<button type="button" id="disconnectButton">Disonnect</button>-->
     <br>
