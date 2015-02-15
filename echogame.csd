@@ -42,17 +42,17 @@ instr getLevel
 	k1 chnget "bgLevel"
 	gkBgLevel port k1, 0.02
 	gkVolume port (chnget:k("volume")),0.02
-	;printk2 gkBgLevel	
+	;printk2 gkVolume	
 endin
 
-scoreline_i  {{ i "play" 0 0.5 "sounds/medium/short/sound13.wav" 0.5 1 0 }}
+;scoreline_i  {{ i "play" 0 0.5 "sounds/medium/short/sound13.wav" 0.5 0 0 }}
 instr play
 	Sfile strget p4;= "sounds/low/long/sound01.wav";strget p4
 	
 	;instrument = p4  ; before soundin.number were used
 	idegree =  (nchnls==2) ? p5*90 : p5*360 ; comes in as 0..1; cpmvert to stereo - 0..90 or circular  0..360. Front-Left is 0 degrees.
 	kdegree init idegree
-	idistance = 0.1+p6*5 ; comes in as 0..1>=1 kaugemal
+	idistance = 0.1+p6*3 ; comes in as 0..1>=1 kaugemal
 	kdistanceChange init 0
 	ivisit = p7 ; first visti - 0, second visit 1 etc
 	ireverbtime = 1.5
@@ -108,10 +108,10 @@ instr play
 		;printk2 kdegree
 		a1, a2  locsig asig*adeclick*gkVolume, kdegree, idistance, ireverbsend
 		ar1, ar2 locsend
-		;if (ivisit>0) then ; send only repetitions to reverb
+		if (ivisit>0) then ; send only repetitions to reverb
 			ga1 = ga1 + ar1
 			ga2 = (ga2+ar2) 
-		;endif
+		endif
 		outs  clip(a1*idry,0,0.8), clip(a2*idry,0,0.8) ; make better mix!		
 	elseif nchnls==4 then
 		a1, a2, a3, a4   locsig asig*adeclick*gkVolume, kdegree, idistance+kdistanceChange, ireverbsend
@@ -172,7 +172,7 @@ endin
   <g>255</g>
   <b>255</b>
  </bgcolor>
- <bsbObject version="2" type="BSBHSlider">
+ <bsbObject type="BSBHSlider" version="2">
   <objectName>bgLevel</objectName>
   <x>90</x>
   <y>79</y>
@@ -190,7 +190,7 @@ endin
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject version="2" type="BSBHSlider">
+ <bsbObject type="BSBHSlider" version="2">
   <objectName>volume</objectName>
   <x>91</x>
   <y>30</y>
@@ -202,13 +202,13 @@ endin
   <midicc>0</midicc>
   <minimum>0.00000000</minimum>
   <maximum>1.00000000</maximum>
-  <value>0.71000000</value>
+  <value>0.45000000</value>
   <mode>lin</mode>
   <mouseControl act="jump">continuous</mouseControl>
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject version="2" type="BSBLabel">
+ <bsbObject type="BSBLabel" version="2">
   <objectName/>
   <x>1</x>
   <y>35</y>
@@ -237,7 +237,7 @@ endin
   <borderradius>1</borderradius>
   <borderwidth>1</borderwidth>
  </bsbObject>
- <bsbObject version="2" type="BSBLabel">
+ <bsbObject type="BSBLabel" version="2">
   <objectName/>
   <x>4</x>
   <y>76</y>
@@ -267,7 +267,7 @@ endin
   <borderradius>1</borderradius>
   <borderwidth>1</borderwidth>
  </bsbObject>
- <bsbObject version="2" type="BSBLabel">
+ <bsbObject type="BSBLabel" version="2">
   <objectName/>
   <x>10</x>
   <y>138</y>
@@ -296,7 +296,7 @@ endin
   <borderradius>1</borderradius>
   <borderwidth>1</borderwidth>
  </bsbObject>
- <bsbObject version="2" type="BSBHSlider">
+ <bsbObject type="BSBHSlider" version="2">
   <objectName>returntime</objectName>
   <x>106</x>
   <y>137</y>
@@ -314,7 +314,7 @@ endin
   <resolution>-1.00000000</resolution>
   <randomizable group="0">false</randomizable>
  </bsbObject>
- <bsbObject version="2" type="BSBLabel">
+ <bsbObject type="BSBLabel" version="2">
   <objectName/>
   <x>13</x>
   <y>195</y>
@@ -343,7 +343,7 @@ endin
   <borderradius>1</borderradius>
   <borderwidth>1</borderwidth>
  </bsbObject>
- <bsbObject version="2" type="BSBSpinBox">
+ <bsbObject type="BSBSpinBox" version="2">
   <objectName>repeatcount</objectName>
   <x>112</x>
   <y>193</y>
@@ -372,7 +372,7 @@ endin
   <randomizable group="0">false</randomizable>
   <value>0</value>
  </bsbObject>
- <bsbObject version="2" type="BSBDisplay">
+ <bsbObject type="BSBDisplay" version="2">
   <objectName>returntime</objectName>
   <x>221</x>
   <y>141</y>
