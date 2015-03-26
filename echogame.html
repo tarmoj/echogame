@@ -102,7 +102,11 @@
 		layer.draw();
 
      } 
-    
+	function notification(message) {
+	    document.getElementById("messageText").innerHTML = message;
+	    setTimeout(function(){  document.getElementById("messageText").innerHTML =  ""; },5000);
+	    
+	}
 
 	function onMessage(evt)
 	{
@@ -132,7 +136,7 @@
 					radioButton.checked = false;
 			}
 			
-			document.getElementById("messageText").innerHTML =  "Range " +mess_array[1] + " " +mess_array[2]+"d.";;
+			notification("Range " +mess_array[1] + " " +mess_array[2]+"d.");
  		}
  		
 	}
@@ -204,7 +208,9 @@
 		
 	</script>
   </head>
-  <body><h1>ECHO GAME. <i>TEST</i></h1><br>
+  <body>
+    <span style='margin-left:440px'><small><i><a href="echogame_est.html">Eesti</a></i></small></span>
+    <h1>ECHO GAME. <i>TEST</i></h1><br>
     <i>Move the yellow circle where you want to hear the sound: closer or further away, left or right.</i><br>
     <form name="myform">
 
