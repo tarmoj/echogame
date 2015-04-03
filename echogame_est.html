@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type">
+    <title>Echo game</title>
+    <meta content="Tarmo Johannes" id="author">
+	
+	<link type="text/css" rel="stylesheet" href="soundgames.css">
+	
+	<script src="kinetic-v5.1.0.js"></script> <!-- image movement etc-->
+    <script src="ws-functions.js"></script> <!-- websocket functions -->
+    
+    <script defer="defer">
+    
+    var distance = 0;
+    var degree = 0.5; // 1 is the full circle or distance between speakers (converted to 360/90/x degrees in Cosund)
+		//var serverURL = "ws://172.16.10.186:6006/ws";
+	var paused = false;
+	
+	function drawEverything() {
+		var stage = new Kinetic.Stage({
+				 container: "container",
+				 width: 400,
+				 height: 200
+			   });
+
+		 var layer = new Kinetic.Layer();
+		 stage.add(layer);
+		 var stageRect =  new Kinetic.Rect({
+			x:30, y:30, 
+			width: stage.getWidth()-60,
+			height: stage.getHeight()-60,
+			//fill: "green",
+ 			fillLinearGradientStartPointX:200,
+ 			fillLinearGradientStartPointY: 170,
+ 			fillLinearGradientEndPointX: 200,
+ 			fillLinearGradientEndPointY: 30,
+ 			fillLinearGradientColorStops: [0, 'lightblue', 0.7, 'darkblue', 1, 'black'],
+
+			stroke: "darkgreen"
+		 });
+		 layer.add(stageRect);
+		 
+// 		 var imageObj = new Image();
+// 		 imageObj.src = "speaker1.png";
+// 		 var speaker1 = new Kinetic.Image({
+//           image:imageObj,
+//           x: 60,
+//           y: 100,
+//           width: 64,
+//           height: 64
+//         });
+
+//        layer.add(speaker1);
+		 
+		 var pointer = new Kinetic.Circle({
+				radius: 30,
+				draggable: true, 
+				x: stageRect.x()+stageRect.getWidth()/2, 
+				y: stageRect.y()+stageRect.getHeight()/2,
+				fill: 'yellow',
+				stroke: 'red',
+				opacity: 0.8,
+				strokeWidth: 1, 
+				dragBoundFunc: function(pos) {
+					var newX=pos.x, newY= pos.y;
+					if (pos.y<stageRect.y()) newY = stageRect.y();
+					if (pos.y>stageRect.y()+stageRect.getHeight()) newY = stageRect.y()+stageRect.getHeight();
+					if (pos.x<stageRect.x()) newX = stageRect.x();
+					if (pos.x>stageRect.x()+stageRect.getWidth()) newX = stageRect.x()+stageRect.getWidth();
+					
+					return { x: newX, y: newY };
+				}
+			});	
+		pointer.on("dragend",function() {
+			degree = (pointer.x()-stageRect.x()) / stageRect.getWidth();
+			distance = 1 - (pointer.y()-stageRect.y()) / stageRect.getHeight()   ;
+			console.log("New pan(degree), distance: ",degree, distance);
+		});	 
+		layer.add(pointer);
+		
+		stageRect.on('click', function() {
+			var pos = stage.getPointerPosition();
+			pointer.position(pos); 
+			degree = (pointer.x()-stageRect.x()) / stageRect.getWidth();
+			distance = 1 - (pointer.y()-stageRect.y()) / stageRect.getHeight()   ;
+			console.log("New pan(degree), distance: ",degree, distance);
+			layer.draw();			
+			
+		});
+		
+		stageRect.on('touchstart', function() {
+			var pos = stage.getPointerPosition();
+			pointer.position(pos); 
+			degree = (pointer.x()-stageRect.x()) / stageRect.getWidth();
+			distance = 1 - (pointer.y()-stageRect.y()) / stageRect.getHeight()   ;
+			console.log("New pan(degree), distance: ",degree, distance);
+			layer.draw();			
+			
+		});
+		
+		layer.draw();
+
+     } 
+
+	function notification(message) {
+	    document.getElementById("messageText").innerHTML = message;
+	    setTimeout(function(){  document.getElementById("messageText").innerHTML =  ""; },5000);
+	    
+	}
+
+	function onMessage(evt)
+	{
+		// does server send any messages at all?
+		writeToScreen("Message from server: " + evt.data + '\n');
+ 		var mess_array = evt.data.split(" ");
+ 		//console.log(mess_array[0]);
+ 		if (mess_array[0] == "pause") {	
+			sendButton.disabled = true;
+			paused=true;
+			 document.getElementById("messageText").innerHTML = "Oota ja kuula!";
+ 		}
+ 		if (mess_array[0] == "continue") {	
+			paused=false;
+			sendButton.disabled = false;
+			document.getElementById("messageText").innerHTML = "";
+ 		}
+ 		
+ 		if (mess_array[0] == "range") { // comes in as range low disable/enable - NB! user can break it when does reload	
+			var radioButton=document.getElementById(mess_array[1]);
+			if (mess_array[2]=="enable") {
+				radioButton.disabled = false;
+			}	
+			if (mess_array[2]=="disable") {
+				radioButton.disabled = true;
+				if (radioButton.checked)
+					radioButton.checked = false;
+			}
+			
+			notification("Range " +mess_array[1] + " " +mess_array[2]+"d.");
+ 		}
+ 		
+	}
+
+	
+  
+  // UI functions --------------------------------------------------------
+		
+	function getRadioValue(name) {
+		var elements = document.getElementsByName(name);
+		var radioValue = -1; // signals that none of the buttons was selected
+		for (var i=0;  i<elements.length; i++) {
+			if (elements[i].checked) {
+				radioValue = elements[i].value;
+			}
+		}
+		return radioValue;
+	}
+	
+	function tester() {
+		var voice = ["low","medium","high"];
+		var length=["short","medium", "long"];
+		
+		var voiceIndex = Math.floor(Math.random()*3);
+		var lengthIndex = Math.floor(Math.random()*3);
+		
+		var degree = Math.random();
+		var distance = Math.random();
+		doSend("play flute " + degree.toString() +  " " + distance.toString()  + " "  + voice[voiceIndex] + " " + length[lengthIndex]  );
+
+		setTimeout(function(){ tester()},500+Math.random()*3000);
+
+		
+	}
+	
+	window.onload = function(){
+		
+		var sendButton = document.getElementById("sendButton");
+		var connectButton = document.getElementById("connectButton");
+		//var disconnectButton = document.getElementById("connectButton");
+		//var degree = document.getElementById("degree");
+		//var distnace = document.getElementById("distance");
+		//var instrument = document.getElementById("instrument");
+		
+		doConnect(); // init websocket on start; suppose the server is ready
+		
+		drawEverything();
+		
+		sendButton.onclick = function() {
+
+			if (getRadioValue("range")==-1) // if none of the voices is selecte. Can happen when server disables a voice
+				notification("Kõrgus pole valitud! Ei saa mängida.");
+			else {
+				doSend("play flute " + degree.toString() +  " " + distance.toString()  + " "  + getRadioValue("range") + " " + getRadioValue("type")  );
+			//var points = cursorImage.getPosition();
+				sendButton.disabled = true; // don't let to play again for some time
+				setTimeout(function(){ 
+					if (!paused) // if "pause" was receiverd during the waiting time, don't enable it!
+						sendButton.disabled = false;
+				},5000);
+			}
+		}
+		
+		connectButton.onclick = function() { 
+			doConnect();
+		}
+		
+	};
+		
+	</script>
+  </head>
+  <body>
+    <span style='margin-left:440px'><small><i><a href="echogame.html">English</a></i></small></span>
+    <h1>KAJAMÄNG</h1><br>
+    <i>Liiguta kollane sõõr sellesse punkti, kust tahad heli kuulda: lähemale või kaugemale, vasemale või paremale.</i><br>
+    <form name="myform">
+
+    <br>
+
+     
+    Kõrgus:&nbsp;<input id="low" value="low" name="range" type="radio">madal&nbsp;&nbsp; <input
+      checked="checked" value="medium" name="range" type="radio" id="medium">keskmine&nbsp;&nbsp;
+    <input value="high" name="range" type="radio" id="high">kõrge <br>
+    <br>
+    Heli pikkus: <input value="short" name="type" type="radio">lühike&nbsp;&nbsp;
+    <input checked="checked" name="type" value="medium" type="radio">keskmine&nbsp;
+    &nbsp; <input value="long" name="type" type="radio">pikk<br>
+    <br>
+	Teated: <span id="messageText" style bgcolor="red">	</span><br><br>
+	<button type="button" class="button" id="sendButton" style="width:100px; height:60px;margin-left:150px">Mängi</button>
+   <div id="container"></div>
+    
+   
+    
+    Serveri aadress: <input value="ws://192.168.1.199:11011/ws" id="url" type="text"><br>
+    <button type="button" id="connectButton" onclick="doConnect();">Ühenda</button>
+    <!--<button type="button" id="disconnectButton">Disonnect</button>-->
+    <br>
+    <br>
+    <p><textarea id="outputtext" rows="5" cols="30" readonly></textarea> </p>
+    
+    
+    </form>
+   
+   
+   
+   
+  </body>
+</html>
